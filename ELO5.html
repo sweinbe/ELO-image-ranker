@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image ELO Ranking System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .section {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .image-pair {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+        }
+        .image-choice {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            max-width: 45%;
+        }
+        .image-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            border: 3px solid #444;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+            overflow: hidden;
+        }
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .image-label {
+            margin-top: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        button, .file-label {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: inline-block;
+        }
+        button:hover, .file-label:hover {
+            background-color: #45a049;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+        .result-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            margin-right: 15px;
+            border-radius: 4px;
+        }
+        
+        /* Preview button */
+        .preview-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(33, 150, 243, 0.7);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 5;
+        }
+        
+        /* Preview overlay */
+        #preview-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        #preview-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        
+        /* Settings sliders */
+        .settings-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .settings-row label {
+            margin-right: 10px;
+            flex: 1;
+        }
+        .settings-row input[type="range"] {
+            flex: 1;
+            background-color: #333;
+        }
+        
+        /* Randomness indicator */
+        .randomness-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(255, 165, 0, 0.7);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        /* ELO and Rank indicators */
+        .elo-score {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .rank-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .image-pair {
+                flex-direction: column;
+                align-items: center;
+            }
+            .image-choice {
+                max-width: 100%;
+            }
+            .image-container {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image ELO Ranking System</h1>
+        
+        <div class="section">
+            <h2>Comparison Settings</h2>
+            <div class="settings-row">
+                <label for="topFocus">Focus on top-ranked images (higher = more focus):</label>
+                <input type="range" id="topFocus" min="1" max="10" value="7" step="1">
+                <span id="topFocusValue">7</span>
+            </div>
+            <div class="settings-row">
+                <label for="randomFactor">Random comparison factor (higher = more randomness):</label>
+                <input type="range" id="randomFactor" min="0" max="50" value="15" step="1">
+                <span id="randomFactorValue">15%</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Upload Images</h2>
+            <div style="display: flex; justify-content: center;">
+                <label for="fileInput" class="file-label">Choose Files</label>
+                <input type="file" id="fileInput" multiple accept="image/*">
+            </div>
+            <div id="upload-status" style="margin-top: 10px; text-align: center;"></div>
+        </div>
+        
+        <div id="comparison-section" class="section hidden">
+            <h2>Compare Images</h2>
+            <div id="comparison-counter" style="text-align: center; margin-bottom: 20px;">Comparison 0 of 0</div>
+            <div class="image-pair">
+                <div class="image-choice" id="image-a" onclick="voteAndContinue('a')">
+                    <div class="image-container">
+                        <img src="/api/placeholder/400/320" alt="Image A">
+                        <div class="elo-score">1500</div>
+                        <div class="rank-indicator">#-</div>
+                        <div class="preview-btn" onmouseenter="showPreview(this)">Preview</div>
+                    </div>
+                    <div class="image-label">Image A</div>
+                </div>
+                <div class="image-choice" id="image-b" onclick="voteAndContinue('b')">
+                    <div class="image-container">
+                        <img src="/api/placeholder/400/320" alt="Image B">
+                        <div class="elo-score">1500</div>
+                        <div class="rank-indicator">#-</div>
+                        <div class="preview-btn" onmouseenter="showPreview(this)">Preview</div>
+                    </div>
+                    <div class="image-label">Image B</div>
+                </div>
+            </div>
+            <div class="controls">
+                <button onclick="getNextPair()">Skip Pair</button>
+            </div>
+        </div>
+        
+        <div id="results-section" class="section hidden">
+            <h2>Rankings</h2>
+            <div id="rankings-list"></div>
+            <div class="controls">
+                <button id="export-btn" onclick="exportRankings()">Export Rankings</button>
+                <label for="importInput" class="file-label" style="background-color: #ff9800;">Import Rankings</label>
+                <input type="file" id="importInput" accept=".json" style="display: none;" onchange="importRankings(event)">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Preview overlay - initially hidden -->
+    <div id="preview-overlay" class="hidden" onclick="hidePreview()">
+        <img id="preview-image" src="" alt="Preview Image">
+    </div>
+
+    <script>
+        // Constants
+        const DEFAULT_ELO = 1500;
+        const K_FACTOR = 32;
+        
+        // State
+        let images = [];
+        let currentPair = [];
+        let comparisonCount = 0;
+        let totalComparisons = 0;
+        let pairHistory = {};  // Track which pairs have been compared
+        let wasRandomSelection = false; // Track if the current pair was randomly selected
+        
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const importInput = document.getElementById('importInput');
+        const uploadStatus = document.getElementById('upload-status');
+        const comparisonSection = document.getElementById('comparison-section');
+        const resultsSection = document.getElementById('results-section');
+        const imageA = document.getElementById('image-a');
+        const imageB = document.getElementById('image-b');
+        const rankingsList = document.getElementById('rankings-list');
+        const comparisonCounter = document.getElementById('comparison-counter');
+        const previewOverlay = document.getElementById('preview-overlay');
+        const previewImage = document.getElementById('preview-image');
+        const topFocusSlider = document.getElementById('topFocus');
+        const topFocusValue = document.getElementById('topFocusValue');
+        const randomFactorSlider = document.getElementById('randomFactor');
+        const randomFactorValue = document.getElementById('randomFactorValue');
+        
+        // Event Listeners
+        fileInput.addEventListener('change', handleFileUpload);
+        topFocusSlider.addEventListener('input', updateTopFocusValue);
+        randomFactorSlider.addEventListener('input', updateRandomFactorValue);
+        
+        // Initialize slider values
+        updateTopFocusValue();
+        updateRandomFactorValue();
+        
+        function updateTopFocusValue() {
+            topFocusValue.textContent = topFocusSlider.value;
+        }
+        
+        function updateRandomFactorValue() {
+            randomFactorValue.textContent = `${randomFactorSlider.value}%`;
+        }
+        
+        // Functions
+        function handleFileUpload(e) {
+            const files = e.target.files;
+            if (!files.length) return;
+            
+            uploadStatus.textContent = `Loading ${files.length} images...`;
+            images = [];
+            pairHistory = {};
+            
+            let loadedCount = 0;
+            
+            Array.from(files).forEach((file, i) => {
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    images.push({
+                        id: `img-${Date.now()}-${i}`,
+                        name: file.name,
+                        src: event.target.result,
+                        elo: DEFAULT_ELO,
+                        wins: 0,
+                        losses: 0,
+                        comparisons: 0,
+                        rank: 0
+                    });
+                    
+                    loadedCount++;
+                    
+                    if (loadedCount === files.length) {
+                        uploadStatus.textContent = `${images.length} images loaded successfully!`;
+                        
+                        // Calculate total comparisons
+                        totalComparisons = (images.length * (images.length - 1)) / 2;
+                        comparisonCount = 0;
+                        
+                        // Update image ranks
+                        updateImageRanks();
+                        
+                        // Show comparison section
+                        comparisonSection.classList.remove('hidden');
+                        resultsSection.classList.remove('hidden');
+                        
+                        // Start comparisons
+                        getNextPair();
+                        updateRankings();
+                    }
+                };
+                
+                reader.onerror = function() {
+                    uploadStatus.textContent += `\nError loading ${file.name}`;
+                };
+                
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function updateImageRanks() {
+            // Sort by ELO and assign ranks
+            const sortedImages = [...images].sort((a, b) => b.elo - a.elo);
+            sortedImages.forEach((img, index) => {
+                const imgIndex = images.findIndex(i => i.id === img.id);
+                if (imgIndex !== -1) {
+                    images[imgIndex].rank = index + 1;
+                }
+            });
+        }
+        
+        function getNextPair() {
+            if (images.length < 2) {
+                uploadStatus.textContent = "Please upload at least 2 images.";
+                return;
+            }
+            
+            // Update image ranks first
+            updateImageRanks();
+            
+            // Random selection chance
+            const randomChance = randomFactorSlider.value / 100;
+            
+            // Determine if this will be a random selection
+            wasRandomSelection = Math.random() < randomChance;
+            
+            if (wasRandomSelection) {
+                // Completely random selection
+                selectRandomPair();
+            } else {
+                // Weighted selection based on rank
+                selectWeightedPair();
+            }
+            
+            // Randomly swap positions (50% chance)
+            if (Math.random() > 0.5) {
+                currentPair = [currentPair[1], currentPair[0]];
+            }
+            
+            // Update UI
+            updateComparisonUI();
+            
+            // Update counter
+            comparisonCounter.textContent = `Comparison ${comparisonCount} of ${totalComparisons}`;
+        }
+        
+        function selectRandomPair() {
+            let availablePairs = [];
+            
+            for (let i = 0; i < images.length; i++) {
+                for (let j = i + 1; j < images.length; j++) {
+                    const imgA = images[i];
+                    const imgB = images[j];
+                    
+                    // Create a unique key for this pair
+                    const pairKey = getPairKey(imgA.id, imgB.id);
+                    
+                    // Check how many times this pair has been compared
+                    const comparedCount = pairHistory[pairKey] || 0;
+                    
+                    availablePairs.push({
+                        pair: [imgA, imgB],
+                        comparisons: comparedCount
+                    });
+                }
+            }
+            
+            // Sort by least compared
+            availablePairs.sort((a, b) => a.comparisons - b.comparisons);
+            
+            // Take the least compared pair, or a random one from the least compared group
+            const leastComparedCount = availablePairs[0].comparisons;
+            const leastComparedPairs = availablePairs.filter(p => p.comparisons === leastComparedCount);
+            const selectedPairData = leastComparedPairs[Math.floor(Math.random() * leastComparedPairs.length)];
+            
+            currentPair = selectedPairData.pair;
+        }
+        
+        function selectWeightedPair() {
+            // Copy and sort images by rank (1 is top rank)
+            const sortedImages = [...images].sort((a, b) => a.rank - b.rank);
+            
+            // Get the top focus power value (higher means more focus on top ranks)
+            const focusPower = parseFloat(topFocusSlider.value);
+            
+            // Assign weights to each image based on rank (higher rank = higher weight)
+            const weightedImages = sortedImages.map(img => {
+                // Calculate weight based on rank (inversely proportional to rank)
+                // Use a power function to control the strength of the rank effect
+                const rankWeight = Math.pow(1 / img.rank, focusPower);
+                
+                return {
+                    image: img,
+                    weight: rankWeight
+                };
+            });
+            
+            // Select first image using weighted random selection
+            const firstImage = weightedRandomSelection(weightedImages);
+            
+            // For the second image, we'll create weighted pairs
+            const availablePairs = [];
+            
+            for (let i = 0; i < images.length; i++) {
+                const img = images[i];
+                if (img.id === firstImage.id) continue; // Skip the first image
+                
+                // Create a unique key for this pair
+                const pairKey = getPairKey(firstImage.id, img.id);
+                
+                // Check how many times this pair has been compared
+                const comparedCount = pairHistory[pairKey] || 0;
+                
+                // Calculate the pair weight based on the second image's rank and comparison count
+                // Less compared pairs are preferred
+                const compareWeight = 1 / (comparedCount + 1);
+                
+                // Use the same rank weighting as for the first image
+                const rankWeight = Math.pow(1 / img.rank, focusPower);
+                
+                // Combine weights
+                const totalWeight = rankWeight * compareWeight;
+                
+                availablePairs.push({
+                    image: img,
+                    weight: totalWeight
+                });
+            }
+            
+            // Select second image
+            const secondImage = weightedRandomSelection(availablePairs);
+            
+            currentPair = [firstImage, secondImage];
+        }
+        
+        function weightedRandomSelection(weightedItems) {
+            // Calculate total weight
+            let totalWeight = 0;
+            for (const item of weightedItems) {
+                totalWeight += item.weight;
+            }
+            
+            // Generate a random value between 0 and totalWeight
+            let randomValue = Math.random() * totalWeight;
+            
+            // Find the item that corresponds to the random value
+            for (const item of weightedItems) {
+                randomValue -= item.weight;
+                if (randomValue <= 0) {
+                    return item.image;
+                }
+            }
+            
+            // Fallback to the last item if something went wrong
+            return weightedItems[weightedItems.length - 1].image;
+        }
+        
+        function getPairKey(idA, idB) {
+            // Create a consistent key regardless of order
+            return [idA, idB].sort().join('-');
+        }
+        
+        function updateComparisonUI() {
+            if (currentPair.length !== 2) return;
+            
+            const [imgA, imgB] = currentPair;
+            
+            // Update Image A
+            imageA.querySelector('img').src = imgA.src;
+            imageA.querySelector('.elo-score').textContent = Math.round(imgA.elo);
+            imageA.querySelector('.rank-indicator').textContent = `#${imgA.rank}`;
+            imageA.querySelector('.image-label').textContent = imgA.name;
+            
+            // Update Image B
+            imageB.querySelector('img').src = imgB.src;
+            imageB.querySelector('.elo-score').textContent = Math.round(imgB.elo);
+            imageB.querySelector('.rank-indicator').textContent = `#${imgB.rank}`;
+            imageB.querySelector('.image-label').textContent = imgB.name;
+            
+            // Add or remove the randomness indicator
+            const containerA = imageA.querySelector('.image-container');
+            const containerB = imageB.querySelector('.image-container');
+            
+            // Remove any existing randomness indicators
+            const existingIndicatorsA = containerA.querySelectorAll('.randomness-indicator');
+            const existingIndicatorsB = containerB.querySelectorAll('.randomness-indicator');
+            existingIndicatorsA.forEach(el => el.remove());
+            existingIndicatorsB.forEach(el => el.remove());
+            
+            // Add new indicator if this was a random selection
+            if (wasRandomSelection) {
+                const indicatorA = document.createElement('div');
+                indicatorA.className = 'randomness-indicator';
+                indicatorA.textContent = 'Random';
+                containerA.appendChild(indicatorA);
+                
+                const indicatorB = document.createElement('div');
+                indicatorB.className = 'randomness-indicator';
+                indicatorB.textContent = 'Random';
+                containerB.appendChild(indicatorB);
+            }
+        }
+        
+        function voteAndContinue(which) {
+            if (!currentPair || currentPair.length !== 2) return;
+            
+            // Check if clicking on preview button
+            if (event && event.target.classList.contains('preview-btn')) {
+                return; // Don't vote if clicking on preview
+            }
+            
+            const [imgA, imgB] = currentPair;
+            
+            // Determine winner and loser
+            const winner = which === 'a' ? imgA : imgB;
+            const loser = which === 'a' ? imgB : imgA;
+            
+            // Brief visual feedback for the vote
+            const container = which === 'a' ? 
+                imageA.querySelector('.image-container') : 
+                imageB.querySelector('.image-container');
+            
+            container.style.border = '3px solid #4CAF50';
+            
+            // Update ELO ratings
+            updateElo(winner, loser);
+            
+            // Record this comparison in history
+            const pairKey = getPairKey(imgA.id, imgB.id);
+            pairHistory[pairKey] = (pairHistory[pairKey] || 0) + 1;
+            
+            // Increment comparison count
+            comparisonCount++;
+            
+            // Update rankings and ranks
+            updateImageRanks();
+            updateRankings();
+            
+            // Get the next pair after a short delay to show the selection
+            setTimeout(() => {
+                // Reset border
+                container.style.border = '3px solid #444';
+                getNextPair();
+            }, 300);
+        }
+        
+        function updateElo(winner, loser) {
+            // Calculate expected scores
+            const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo - winner.elo) / 400));
+            const expectedLoser = 1 / (1 + Math.pow(10, (winner.elo - loser.elo) / 400));
+            
+            // Update ELO ratings
+            winner.elo = winner.elo + K_FACTOR * (1 - expectedWinner);
+            loser.elo = loser.elo + K_FACTOR * (0 - expectedLoser);
+            
+            // Update stats
+            winner.wins++;
+            loser.losses++;
+            winner.comparisons++;
+            loser.comparisons++;
+        }
+        
+        function updateRankings() {
+            // Sort by ELO rating
+            const sortedImages = [...images].sort((a, b) => b.elo - a.elo);
+            
+            // Clear the rankings list
+            rankingsList.innerHTML = '';
+            
+            // Add each image to the rankings
+            sortedImages.forEach((img, index) => {
+                const winRate = img.comparisons > 0 ? 
+                    ((img.wins / img.comparisons) * 100).toFixed(1) : '0.0';
+                
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                // Create image container with preview option
+                const imgContainer = document.createElement('div');
+                imgContainer.style.position = 'relative';
+                
+                const resultImg = document.createElement('img');
+                resultImg.src = img.src;
+                resultImg.alt = img.name;
+                
+                const previewBtn = document.createElement('div');
+                previewBtn.className = 'preview-btn';
+                previewBtn.style.position = 'absolute';
+                previewBtn.style.bottom = '2px';
+                previewBtn.style.right = '2px';
+                previewBtn.style.fontSize = '8px';
+                previewBtn.style.padding = '2px 4px';
+                previewBtn.textContent = 'Preview';
+                previewBtn.onmouseenter = function() { showPreview(this); };
+                
+                imgContainer.appendChild(resultImg);
+                imgContainer.appendChild(previewBtn);
+                
+                const detailsDiv = document.createElement('div');
+                detailsDiv.innerHTML = `
+                    <div><strong>#${index + 1}. ${img.name}</strong></div>
+                    <div>Score: ${Math.round(img.elo)} | W/L: ${img.wins}/${img.losses} | Win Rate: ${winRate}%</div>
+                `;
+                
+                resultItem.appendChild(imgContainer);
+                resultItem.appendChild(detailsDiv);
+                rankingsList.appendChild(resultItem);
+            });
+        }
+        
+        function showPreview(element) {
+            // Get the image source
+            const imgSrc = element.parentNode.querySelector('img').src;
+            
+            // Set the preview image source
+            previewImage.src = imgSrc;
+            
+            // Show the overlay
+            previewOverlay.classList.remove('hidden');
+            
+            // Prevent click from propagating
+            if (event) event.stopPropagation();
+        }
+        
+        function hidePreview() {
+            previewOverlay.classList.add('hidden');
+        }
+        
+        function exportRankings() {
+            const data = {
+                images: images,
+                comparisonCount: comparisonCount,
+                totalComparisons: totalComparisons,
+                pairHistory: pairHistory,
+                exportDate: new Date().toISOString(),
+                settings: {
+                    topFocus: topFocusSlider.value,
+                    randomFactor: randomFactorSlider.value
+                }
+            };
+            
+            const dataStr = JSON.stringify(data);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportName = 'image-elo-rankings-' + new Date().toISOString().slice(0, 10) + '.json';
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportName);
+            linkElement.click();
+        }
+        
+        function importRankings(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    
+                    if (data.images && Array.isArray(data.images)) {
+                        images = data.images;
+                        comparisonCount = data.comparisonCount || 0;
+                        totalComparisons = data.totalComparisons || ((images.length * (images.length - 1)) / 2);
+                        pairHistory = data.pairHistory || {};
+                        
+                        // Import settings if available
+                        if (data.settings) {
+                            if (data.settings.topFocus) {
+                                topFocusSlider.value = data.settings.topFocus;
+                                updateTopFocusValue();
+                            }
+                            if (data.settings.randomFactor) {
+                                randomFactorSlider.value = data.settings.randomFactor;
+                                updateRandomFactorValue();
+                            }
+                        }
+                        
+                        // Make sure all images have a rank property
+                        images.forEach(img => {
+                            if (typeof img.rank === 'undefined') {
+                                img.rank = 0;
+                            }
+                        });
+                        
+                        // Update ranks
+                        updateImageRanks();
+                        
+                        // Show sections
+                        comparisonSection.classList.remove('hidden');
+                        resultsSection.classList.remove('hidden');
+                        
+                        // Update UI
+                        uploadStatus.textContent = `${images.length} images loaded from import!`;
+                        updateRankings();
+                        getNextPair();
+                        
+                        alert('Rankings imported successfully!');
+                    } else {
+                        alert('Invalid file format. Please use a file exported from this tool.');
+                    }
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('Error importing rankings: ' + error.message);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
